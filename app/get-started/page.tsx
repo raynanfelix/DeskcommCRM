@@ -4,7 +4,7 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 import { marcaDaSaida } from "@/lib/branding/saida";
 import { RecoverOrganizationForm } from "@/components/auth/RecoverOrganizationForm";
-import { criarOrganizacaoForm } from "@/components/auth/CriarOrganizacaoForm";
+import { CriarOrganizacaoForm } from "@/components/auth/CriarOrganizacaoForm";
 import { modoDeCadastro } from "@/lib/auth/politica-de-cadastro";
 import { estadoDoPedido } from "@/lib/auth/registration-requests";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -98,7 +98,7 @@ export default async function GetStartedPage() {
                 <RecoverOrganizationForm nomeSugerido={nomeSugerido} comAprovacao={comAprovacao} />
               )
             : //! Senão -> SaaS: mostrar formulário de criação de nova organização
-              <criarOrganizacaoForm nomeSugerido={nomeSugerido} comAprovacao={comAprovacao} />
+              <CriarOrganizacaoForm nomeSugerido={nomeSugerido} comAprovacao={comAprovacao} />
           }
 
           <p className="text-xs leading-relaxed text-muted-foreground">
