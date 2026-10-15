@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 import { acessoFoiRevogado } from "@/lib/auth/vinculo-revogado";
-import { createRegistrationRequest } from "@/app/actions/auth/recoverOrganization";
+import { createRegistrationRequest } from "@/lib/auth/registration-requests";
 import { ensureTenantForUser } from "@/lib/auth/provision";
 import { modoDeCadastro } from "@/lib/auth/politica-de-cadastro";
 import { organizationNameSchema } from "@/lib/auth/schemas";
