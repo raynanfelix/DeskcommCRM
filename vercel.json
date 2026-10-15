@@ -1,11 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "functions": {
-    "api/*": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
