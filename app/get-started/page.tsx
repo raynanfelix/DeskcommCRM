@@ -4,36 +4,38 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 import { marcaDaSaida } from "@/lib/branding/saida";
 import { RecoverOrganizationForm } from "@/components/auth/RecoverOrganizationForm";
+import { criarOrganizacaoForm } from "@/components/auth/CriarOrganizacaoForm";
 import { modoDeCadastro } from "@/lib/auth/politica-de-cadastro";
 import { estadoDoPedido } from "@/lib/auth/registration-requests";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 
 /**
- * A saída do beco: quem confirmou o e-mail e ficou sem organização termina o
- * primeiro acesso aqui. Ver `app/actions/auth/recoverOrganization.ts` para o
- * defeito inteiro.
+ * Ponto de entrada para quem não tem organização.
+ * Suporta dois fluxos:
+ * 1) Recuperar/criar organização em instalação existente (self-host / MVP)
+ * 2) Novo cadastro SaaS: criar uma nova organização (tenant) e conta.
  *
- * FORA de `app/app/**`, como `/login` e `/team/accept-invite` — por isso não
- * entra em `lib/navigation/registry.ts` nem na allowlist de
- * `tests/unit/navegacao-completude.test.ts`, cujo escopo é a navegação do
- * tenant. As portas são os três desvios que levam até aqui: os dois de
- * `app/onboarding/` e o estado vazio do Inbox.
+ * Fluxo 1 (existente): quem tem e-mail confirmado mas sem org -> tela de
+ * definição de nome da empresa + formulário de recuperação/criação.
+ * Fluxo 2 (SaaS): quem ainda não tem conta ou quer uma instância nova ->
+ * formulário de criação de organização + plano.
+ *
+ * As portas de chegada são:
+ * - /get-started vindo de auth flow sem organização
+ * - /login sem organização prévia
+ * - Qualquer usuário sem activeOrg redirecionado aqui
  */
 export const dynamic = "force-dynamic";
 
 export default async function GetStartedPage() {
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
-  // Quem já tem organização não passa por aqui: sem isto, a tela viraria um
-  // "abra outra empresa" alcançável por quem digitasse a URL.
+
+  // Quem já tem organização redireciona para o app
   if (activeOrg) redirect("/app/inbox");
 
-  // O nome da empresa que a pessoa digitou no cadastro mora no `user_metadata`,
-  // que `AuthUser` não carrega — e alargar `AuthUser` por causa de uma tela de
-  // exceção sairia mais caro que esta leitura, que só acontece aqui. Vale para
-  // quem chega pelo cadastro com confirmação de e-mail desligada: o campo já
-  // vem preenchido em vez de pedir de novo o que ela acabou de informar.
+  // O nome sugerido vem do user_metadata do Supabase Auth
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -44,15 +46,13 @@ export default async function GetStartedPage() {
   // vem do próprio usuário, e o formulário precisa do provider para o `useT()`.
   const t = (texto: string) => traduzir(texto, user.idioma);
 
-  // COM APROVAÇÃO (migration 0383): a mesma tela vira o pedido. A tabela só é
-  // lida nesse modo — com a chave desligada, esta tela faz exatamente o que
-  // fazia antes.
+  // COM APROVAÇÃO (migration 0383): a mesma tela vira pedido de aprovação.
+  // Com a chave desligada, esta tela faz exatamente o que fazia antes.
   const comAprovacao = (await modoDeCadastro()) === "com_aprovacao";
   const pedido = comAprovacao ? await estadoDoPedido(user.id) : null;
   const aguardando = pedido === "pending" || pedido === "rejected";
 
-  // O nome em texto vem do resolvedor do BANCO (`marcaDaSaida`), não do
-  // `branding()` — o banco vence e o `.env` é o piso.
+  // Resolvedor de marca: banco vence sobre .env
   const marca = await marcaDaSaida(null);
 
   return (
@@ -88,9 +88,19 @@ export default async function GetStartedPage() {
                       )}
             </p>
           </div>
-          {!aguardando && (
-            <RecoverOrganizationForm nomeSugerido={nomeSugerido} comAprovacao={comAprovacao} />
-          )}
+
+          {/* Formulário: mostra recuperação SE houver pedido pendente/rejeitado OU
+              ainda não houver org + comAprovacao TRUE.
+              Caso contrário, mostra o formulário de criação de nova organização (SaaS). */}
+          {((pedido === "pending" || pedido === "rejected") || (comAprovacao && !activeOrg))
+            ? (
+                //! Se há pedido pendente/rejeitado OU (aprovado mas sem org) -> mostra recuperação
+                <RecoverOrganizationForm nomeSugerido={nomeSugerido} comAprovacao={comAprovacao} />
+              )
+            : //! Senão -> SaaS: mostrar formulário de criação de nova organização
+              <criarOrganizacaoForm nomeSugerido={nomeSugerido} comAprovacao={comAprovacao} />
+          }
+
           <p className="text-xs leading-relaxed text-muted-foreground">
             {t(
               "Se você recebeu um convite, não crie uma organização nova. Use o link do convite ou peça ao administrador para reenviá-lo.",

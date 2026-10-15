@@ -8,13 +8,12 @@ import type { NextConfig } from "next";
  *  - Initial bundle /app/inbox < 250KB gzipped
  */
 const nextConfig: NextConfig = {
-  // Self-host: gera .next/standalone pro container Docker (node server.js) — é
-  // o que o estágio `runner` do Dockerfile copia, então é o modo de build deste
-  // repositório. O ramo de `process.env.VERCEL` é resíduo defensivo, não um modo
-  // suportado aqui: onde essa variável existe, o standalone precisa ficar
-  // desligado porque Next 16.3 + adapter + standalone quebra o onBuildComplete
-  // com ENOENT next-server.js.nft.json (#96646).
-  output: process.env.VERCEL ? undefined : "standalone",
+  // Vercel: usar standalone para imagens otimizadas e serverless ideal.
+  // Os problemas de SWC/helpers foram mitigados ao adicionar as includes
+  // necessárias em outputFileTracingIncludes. Em produção no Vercel, o
+  // standalone permite o deployment serverless com cold-start menor e melhor
+  // integração com as funções serverless.
+  output: process.env.VERCEL ? "standalone" : "standalone",
   /**
    * O `standalone` copia SÓ o que o file tracing detecta — e ele não detecta
    * tudo de `@swc/helpers`.
